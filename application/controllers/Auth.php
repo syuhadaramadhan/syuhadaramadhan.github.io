@@ -28,18 +28,18 @@ class Auth extends CI_Controller {
 
 	private function _login()
 	{
-		// ambil data dari form input
+		// Ambil Data Dari Form Input.
 		$email = $this->input->post('email');
 		$password = $this->input->post('password');
-		// cocokan dengan database
+		// Cocokan Dengan Database.
 		$user = $this->db->get_where('user', ['email' => $email])->row_array();
-		// beri kondisi jika ada dan tidak ada user
+		// Beri Kondisi Jika Ada Dan Tidak Ada User.
 		if ($user)
 		{
-			// bila data user ada dan berstatus aktip
+			// Bila Data User Ada Dan Berstatus Aktip.
 			if($user['is_active'] == 1)
 			{
-				// status user aktif lalu cek password
+				// Status User Aktif Lalu Cek Password.
 				if (password_verify($password, $user['password']))
 				{
 					$data =
@@ -48,7 +48,7 @@ class Auth extends CI_Controller {
 						'role_id' => $user['role_id']
 					];
 					$this->session->set_userdata($data);
-					// cek role id
+					// Cek Role Id.
 					if ($user['role_id'] == 1)
 					{
 						redirect('admin');
@@ -58,21 +58,21 @@ class Auth extends CI_Controller {
 					}
 				} else
 				{
-					// jika password salah
+					// Jika Password Salah.
 					$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
 					Wrong password </div>');
 					redirect('auth');
 				}
 			} else
 			{
-				// status user tidak aktif
+				// Status User Tidak Aktif.
 				$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
 				This email has not been activated! </div>');
 				redirect('auth');
 			}
 		} else
 		{
-			// bila data user tidak ada berikan alert
+			// Bila Data User Tidak Ada Berikan Alert.
 			$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
 			Email is not registered! </div>');
 			redirect('auth');
@@ -123,4 +123,3 @@ class Auth extends CI_Controller {
 		redirect('auth');
 	}
 }
-// Field Database User : id	name	email	image	password	role_id	is_active	data_created

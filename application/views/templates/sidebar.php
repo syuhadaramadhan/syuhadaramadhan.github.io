@@ -12,42 +12,56 @@
       <!-- Divider -->
       <hr class="sidebar-divider">
 
+      
       <!-- query menu -->
       <?php
-        $queryMenu =  "SELECT column-names
-                      FROM table-name1 JOIN table-name2 
-                          ON column-name1 = column-name2
-                      WHERE condition" 
+        // Deklaraikan Mendapatkan Role Id Dari Session.
+        $role_id = $this->session->userdata('role_id');
+        // Query Join Tabel User Menu Dan User Acces Menu.
+        $queryMenu =  "SELECT `user_menu`.`id`, `menu`
+                      FROM `user_menu` JOIN `user_access_menu` 
+                          ON `user_menu`.`id` = `user_access_menu`.`menu_id`
+                      WHERE `user_access_menu`.`role_id` = $role_id 
+                      ORDER BY `user_access_menu`.`menu_id` ASC";
+        // Dapatkan Hasil Query Dalam Bentuk Array.
+        $menu = $this->db->query($queryMenu)->result_array();
       ?>
-      <!-- Heading -->
-      <div class="sidebar-heading">
-        Administrator
-      </div>
 
-      <!-- Nav Item - Dashboard -->
-      <li class="nav-item">
-        <a class="nav-link" href="index.html">
-          <i class="fas fa-fw fa-tachometer-alt"></i>
-          <span>Dashboard</span></a>
-      </li>
-    
+      <!-- Looping Menu -->
+      <?php foreach($menu as $m) : ?>
+        <div class="sidebar-heading">
+          <?= $m['menu']; ?> 
+        </div>
+        <!-- siapkan sub menu sesuai menu -->
+        <?php 
+          // Deklaraikan Mendapatkan Menu Id Dari $querymenu.
+          $menuId = $m['id'];
+          // Query Join Tabel User Menu Dan User Sub Menu.
+          $querySubMenu = "SELECT *
+                          FROM `user_sub_menu` JOIN `user_menu` 
+                          ON `user_sub_menu`.`menu_id` = `user_menu`.`id`
+                          WHERE `user_sub_menu`.`menu_id` = $menuId
+                          AND `user_sub_menu`.`is_active` = 1";
+          // Dapatkan Hasil Query Dalam Bentuk Array.
+          $subMenu = $this->db->query($querySubMenu)->result_array();
+        ?>
+        <!-- Looping Sub Menu -->
+        <?php foreach($subMenu as $sm) : ?>
+          <!-- Kondisi Untuk Menandakan Menu Sedang Aktif -->
+          <?php if ($title == $sm['title']) : ?>
+            <li class="nav-item active">
+          <?php else : ?>
+            <li class="nav-item">
+          <?php endif; ?>  
+            <a class="nav-link" href="<?= base_url($sm['url']); ?>">
+            <i class="<?= $sm['icon']; ?>"></i>
+            <span><?= $sm['title']; ?></span></a>
+          </li>
+        <?php endforeach; ?>
       <!-- Divider -->
       <hr class="sidebar-divider">
-    
-      <!-- Heading -->
-      <div class="sidebar-heading">
-        User
-      </div>
 
-      <!-- Nav Item - My Profile -->
-      <li class="nav-item">
-        <a class="nav-link" href="charts.html">
-          <i class="fas fa-fw fa-user"></i>
-          <span>My Profile</span></a>
-      </li>
-      
-      <!-- Divider -->
-      <hr class="sidebar-divider d-none d-md-block">
+      <?php endforeach; ?>
 
       <!-- Heading -->
       <div class="sidebar-heading">
