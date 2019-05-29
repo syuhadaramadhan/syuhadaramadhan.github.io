@@ -12,13 +12,14 @@ class Auth extends CI_Controller
 
 	public function index()
 	{
-		//tendang user yang sudah login untuk kembali kehalaman login
+		// tendang user yang sudah login untuk kembali kehalaman login
 		if ($this->session->userdata('email')) {
 			redirect('user');
 		}
+		// buat rule untuk inputan
 		$this->form_validation->set_rules('email', 'Email', 'required|trim|valid_email');
 		$this->form_validation->set_rules('password', 'Password', 'required|trim');
-
+		// kondisi jika password benar atau salah
 		if ($this->form_validation->run() == false) {
 			$data['title'] = 'Login Page';
 			$this->load->view('templates/auth_header', $data);
@@ -80,6 +81,7 @@ class Auth extends CI_Controller
 		if ($this->session->userdata('email')) {
 			redirect('user');
 		}
+		// tentukan rules untuk inputan registrasi
 		$this->form_validation->set_rules('name', 'Name', 'required|trim');
 		$this->form_validation->set_rules('email', 'Email', 'required|trim|valid_email|is_unique[user.email]');
 		$this->form_validation->set_rules('password1', 'Password', 'required|trim|min_length[3]|matches[password2]', [
@@ -87,7 +89,7 @@ class Auth extends CI_Controller
 			'min_length' => 'Password too short!'
 		]);
 		$this->form_validation->set_rules('password2', 'Password', 'required|trim|matches[password1]');
-
+		// kondisi jika validasi benar atau salah
 		if ($this->form_validation->run() == false) {
 			$data['title'] = 'WPU User Registration';
 			$this->load->view('templates/auth_header', $data);
@@ -95,11 +97,12 @@ class Auth extends CI_Controller
 			$this->load->view('templates/auth_footer');
 		} else {
 			$email = $this->input->post('email', true);
+			// siapkan data yang akan disimpan
 			$data =
 				[
 					'name' => htmlspecialchars($this->input->post('name', true)),
 					'email' => htmlspecialchars($email),
-					'image' => 'default.jpg',
+					'image' => 'default.png',
 					'password' => password_hash($this->input->post('password1'), PASSWORD_DEFAULT),
 					'role_id' => 2,
 					'is_active' => 0,
@@ -148,7 +151,12 @@ class Auth extends CI_Controller
 			// tuliskan subjek email
 			$this->email->subject('Account Verification');
 			// tuliskan isi email
-			$this->email->message('Click this link to verify you account : <a href="' . base_url() . 'auth/verify?email=' . $this->input->post('email') . '& token=' . $token . '">Activate</a>');
+			$this->email->message('Click this link to verify you account : <a href="' . base_url() . 'auth/verify?email=' . $this->input->post('email') . '&token=' . urlencode($token) . '">Activate</a>');
+		} elseif ($type == 'forgot') {
+			// tuliskan subjek email
+			$this->email->subject('Reset Password');
+			// tuliskan isi email
+			$this->email->message('Click this link to reset your password : <a href="' . base_url() . 'auth/resetpassword?email=' . $this->input->post('email') . '&token=' . urlencode($token) . '">Reset Password</a>');
 		}
 		// kirim email
 		if ($this->email->send()) {
@@ -158,7 +166,6 @@ class Auth extends CI_Controller
 			die;
 		}
 	}
-
 
 	public function verify()
 	{
@@ -219,5 +226,111 @@ class Auth extends CI_Controller
 	public function blocked()
 	{
 		$this->load->view('auth/blocked');
+	}
+
+	public function forgotPassword()
+	{
+		// berikan rule untuk inputan forgot password
+		$this->form_validation->set_rules('email', 'Email', 'required|trim|valid_email');
+		// kondisi bila form validasi gagal
+		if ($this->form_validation->run() == false) {
+			$data['title'] = 'Forgot Password';
+			$this->load->view('templates/auth_header', $data);
+			$this->load->view('auth/forgot-password');
+			$this->load->view('templates/auth_footer');
+		} else {
+			// jika form validasi berhasil
+			$email = $this->input->post('email');
+			// ambil data email dari tabel user
+			$user = $this->db->get_where('user', ['email' => $email, 'is_active' => 1])->row_array();
+			// buat kondisi bila ada user
+			if ($user) {
+				// buat token
+				$token = base64_encode(random_bytes(32));
+				// buat data user token
+				$user_token = [
+					'email' => $email,
+					'token' => $token,
+					'date_created' => time()
+				];
+				// simpan ke tabel user token
+				$this->db->insert('user_token', $user_token);
+				// buat method send email
+				$this->_sendEmail($token, 'forgot');
+				// tampilakan notifikasi
+				$this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">
+				Please check your email to reset your password! </div>');
+				redirect('auth/forgotpassword');
+			} else {
+				// kalau tidak ada user / user tidak terdaftar
+				$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+				Email is not registered or activated! </div>');
+				redirect('auth/forgotpassword');
+			}
+		}
+	}
+
+	public function resetPassword()
+	{
+		// ambil data email dan token
+		$email = $this->input->get('email');
+		$token = $this->input->get('token');
+		// cek email apakah ada email didatabase
+		$user = $this->db->get_where('user', ['email' => $email])->row_array();
+		// cek jika ada user
+		if ($user) {
+			// cek apaka token ada di tabel user token
+			$user_token = $this->db->get_where('user_token', ['token' => $token])->row_array();
+			if ($user_token) {
+				// buat session untuk menangani password baru
+				$this->session->set_userdata('reset_email', $email);
+				$this->changePassword();
+			} else {
+				// kalau tidak ada user / user tidak terdaftar
+				$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+				Reset password failed! Wrong Token</div>');
+				redirect('auth');
+			}
+		} else {
+			// kalau tidak ada user / user tidak terdaftar
+			$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+			Reset password failed! Wrong email</div>');
+			redirect('auth');
+		}
+	}
+
+	public function changePassword()
+	{
+		//kondisi untuk user yang memaksa mereset password tanpa lewat email
+		if (!$this->session->userdata('reset_email')){
+			redirect('auth');
+		}
+		// tentukan rule input
+		$this->form_validation->set_rules('password1', 'Password', 'required|trim|min_length[3]|matches[password2]');
+		$this->form_validation->set_rules('password2', 'Repeat Password', 'required|trim|min_length[3]|matches[password1]');
+		// buat kondisi untuk validasi
+		if ($this->form_validation->run() == false)
+		{
+			$data['title'] = 'Change Password';
+			$this->load->view('templates/auth_header', $data);
+			$this->load->view('auth/change-password');
+			$this->load->view('templates/auth_footer');
+		} else
+		{
+			// encrypt password
+			$password = password_hash($this->input->post('password1'), PASSWORD_DEFAULT );
+			// ambil email yang ada disesion
+			$email = $this->session->userdata('reset_email');
+			// query update tabel user
+			$this->db->set('password', $password);
+			$this->db->where('email', $email);
+			$this->db->update('user');
+			// hapus session
+			$this->session->unset_userdata('reset_email');
+			// tampilkan pemberitahuna change password berhasil
+			$this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">
+			Password has been changed! Please Login</div>');
+			redirect('auth');
+		}
 	}
 }

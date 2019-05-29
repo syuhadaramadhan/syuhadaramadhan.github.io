@@ -13,7 +13,18 @@
 		<!-- Munculkan Alert Bila Berhasil -->
 		<?= $this->session->flashdata('message'); ?>
 		<!-- Tabel Data Menu -->
-  		<a href="" class="btn btn-primary mb-3" data-toggle="modal" data-target="#addNewSubmenuModal">Add New Submenu</a>
+		<div class="container">
+						<div class="row">
+										<div class="col-lg-9">
+										<a href="" class="btn btn-primary mb-3" data-toggle="modal" data-target="#addNewSubmenuModal">Add New Submenu</a>
+										</div>
+									<div class="col-lg-3 pull-right">
+								<div class="form-group">
+								<input type="text" class="form-control form-control-user" id="email" name="email" placeholder="Search">
+							</div>
+								</div>
+						</div>
+			</div>
   		<table class="table table-hover">
 		  <thead>
 		    <tr>
